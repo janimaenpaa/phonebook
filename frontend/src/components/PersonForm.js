@@ -19,10 +19,9 @@ const PersonForm = ({
       number: newNumber
     };
 
-    let id;
-
     if (persons.find(person => person.name === newName)) {
-      id = persons.findIndex(person => person.name === newName) + 1;
+      const id = persons.filter(person => person.name === newName)[0].id;
+
       if (
         window.confirm(
           `${newName} is already added to phonebook, replace the old number with a new one?`
@@ -55,9 +54,7 @@ const PersonForm = ({
             person.name === newName ? { ...changedPerson } : person
           )
         );
-        setErrorMessage(
-          `Number updated`
-        );
+        setErrorMessage(`Number updated`);
         setTimeout(() => {
           setErrorMessage(null);
         }, 5000);

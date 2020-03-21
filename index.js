@@ -17,38 +17,36 @@ morgan.token("body", (req, res) => {
 app.use(
   morgan(":method :url :status :res[content-length] - :response-time ms :body")
 );
-// let persons = [
-//   {
-//     name: "Arto Hellas",
-//     number: "040-123456",
-//     id: 1
-//   },
-//   {
-//     name: "Ada Lovelace",
-//     number: "39-44-5323523",
-//     id: 2
-//   },
-//   {
-//     name: "Dan Abramov",
-//     number: "12-43-234345",
-//     id: 3
-//   },
-//   {
-//     name: "Mary Poppendieck",
-//     number: "39-23-6423122",
-//     id: 4
-//   }
-// ];
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError" && error.kind == "ObjectId") {
+    return response.status(400).send({ error: "malformatted id" });
+  }
+
+  next(error);
+};
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: "unknown endpoint" });
+};
 
 app.get("/", (req, res) => {
   res.send("<h1>Hello World!</h1>");
 });
 
 app.get("/info", (req, res) => {
-  res.send(`<div>
-  <p>Phonebook has info of ${persons.length} people</p>
-  <p>${new Date(Date.now())}</p>
-  </div>`);
+  Person.countDocuments({}, (err, result) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.send(`<div>
+                <p>Phonebook has info of ${result} people</p>
+                <p>${new Date(Date.now())}</p>
+                </div>`);
+    }
+  });
 });
 
 app.get("/api/persons", (req, res) => {
@@ -57,15 +55,16 @@ app.get("/api/persons", (req, res) => {
   });
 });
 
-const generateId = () => {
-  const Id = Math.floor(Math.random() * 99999) + 1;
-  return Id;
-};
-
-app.get("/api/persons/:id", (req, res) => {
-  Person.findById(req.params.id).then(person => {
-    res.json(person.toJSON());
-  });
+app.get("/api/persons/:id", (req, res, next) => {
+  Person.findById(req.params.id)
+    .then(person => {
+      if (person) {
+        res.json(person.toJSON());
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch(error => next(error));
 });
 
 app.post("/api/persons", (req, res) => {
@@ -76,10 +75,6 @@ app.post("/api/persons", (req, res) => {
   } else if (!body.number) {
     return res.status(400).json({ error: "number missing" });
   }
-
-  // else if (persons.find(person => person.name === body.name)) {
-  //   return res.status(400).json({ error: "name must be unique" });
-  // }
 
   const person = new Person({
     name: body.name,
@@ -92,12 +87,31 @@ app.post("/api/persons", (req, res) => {
   });
 });
 
-app.delete("/api/persons/:id", (req, res) => {
-  const id = Number(req.params.id);
-  persons = persons.filter(person => person.id !== id);
+app.put("/api/persons/:id", (req, res, next) => {
+  const body = req.body;
 
-  res.status(204).end();
+  const person = {
+    name: body.name,
+    number: body.number
+  };
+
+  Person.findByIdAndUpdate(req.params.id, person, { new: true })
+    .then(updatedPerson => {
+      res.json(updatedPerson.toJSON());
+    })
+    .catch(error => next(error));
 });
+
+app.delete("/api/persons/:id", (req, res, next) => {
+  Person.findByIdAndRemove(req.params.id)
+    .then(result => {
+      res.status(204).end();
+    })
+    .catch(error => next(error));
+});
+
+app.use(errorHandler);
+app.use(unknownEndpoint);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
