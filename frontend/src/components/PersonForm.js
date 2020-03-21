@@ -31,15 +31,24 @@ const PersonForm = ({
       }
     }
 
-    personService.create(personObject).then(returnedPerson => {
-      setPersons(persons.concat(returnedPerson));
-      setNewName("");
-      setNewNumber("");
-      setErrorMessage(`Added ${personObject.name}`);
-      setTimeout(() => {
-        setErrorMessage(null);
-      }, 5000);
-    });
+    personService
+      .create(personObject)
+      .then(returnedPerson => {
+        setPersons(persons.concat(returnedPerson));
+        setNewName("");
+        setNewNumber("");
+        setErrorMessage(`Added ${personObject.name}`);
+        setTimeout(() => {
+          setErrorMessage(null);
+        }, 5000);
+      })
+      .catch(error => {
+        console.log(error.response.data);
+        setErrorMessage(error.response.data.error);
+        setTimeout(() => {
+          setErrorMessage(null);
+        }, 5000);
+      });
   };
 
   const updatePerson = (id, personObject) => {
